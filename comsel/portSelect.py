@@ -1,177 +1,149 @@
-from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QIntValidator, QIcon
-from PyQt6.QtWidgets import (
-    QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton, QSpacerItem, QSizePolicy
-)
+import wx
 import serial.tools.list_ports
-import sys, re
-from importlib.resources import files
+import re
 
 
-class PortSelectionWindow(QDialog):
+class PortSelectionWindow(wx.Dialog):
     def __init__(self):
-        super().__init__()
+        super().__init__(None, title="Выбор COM порта и скорости", size=(450, 230))
         self.selected_port = None
         self.selected_baudrate = None
-        self.setWindowTitle("Выбор COM порта и скорости передачи данных")
 
-        # Устанавливаем иконку окна
-        icon_path = files("comsel.icons").joinpath("icon.ico")
-        self.setWindowIcon(QIcon(str(icon_path)))
+        # Основной layout
+        main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Применяем стиль
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #E6F7FF; /* Голубой фон */
-            }
-            QLabel {
-                color: #003366; /* Темно-синий текст */
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QLineEdit, QComboBox {
-                background-color: #FFFFFF; /* Белый фон */
-                color: #003366; /* Темно-синий текст */
-                border: 1px solid #99CCFF; /* Голубая рамка */
-                border-radius: 4px;
-                padding: 4px;
-                font-size: 14px;
-            }
-            QPushButton {
-                background-color: #99CCFF; /* Светло-голубой */
-                color: #FFFFFF; /* Белый текст */
-                border: none;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #66B2FF; /* Темнее при наведении */
-            }
-            QPushButton:pressed {
-                background-color: #3399FF; /* Еще темнее при нажатии */
-            }
-        """)
+        # Заголовок выбора порта
+        port_label = wx.StaticText(self, label="Выберите или введите COM порт:")
+        port_label.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        main_sizer.Add(port_label, flag=wx.LEFT | wx.TOP, border=10)
 
-        # Настройка размеров окна
-        self.setFixedSize(500, 300)
+        # COM-порт выбор
+        port_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.port_combo = wx.ComboBox(self, choices=self.get_ports(), style=wx.CB_READONLY, size=(200, -1))
+        self.port_combo.Bind(wx.EVT_COMBOBOX, self.on_selection_change)
+        self.manual_port_input = wx.TextCtrl(self, size=(200, -1))
+        self.manual_port_input.SetHint("Введите COM порт")
+        self.manual_port_input.Bind(wx.EVT_TEXT, self.on_selection_change)
+        port_sizer.Add(self.port_combo, flag=wx.RIGHT, border=5)
+        port_sizer.Add(self.manual_port_input, flag=wx.LEFT, border=5)
+        main_sizer.Add(port_sizer, flag=wx.LEFT | wx.RIGHT | wx.TOP, border=10)
 
-        # Основной вертикальный layout
-        main_layout = QVBoxLayout()
-        self.setLayout(main_layout)
+        # Заголовок выбора скорости
+        baudrate_label = wx.StaticText(self, label="Выберите или введите скорость (Baudrate):")
+        baudrate_label.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        main_sizer.Add(baudrate_label, flag=wx.LEFT | wx.TOP, border=10)
 
-        # Горизонтальный layout для COM-порта и baudrate
-        horizontal_layout = QHBoxLayout()
+        # Baudrate выбор
+        baudrate_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.baudrate_combo = wx.ComboBox(self, choices=["9600", "19200", "38400", "57600", "115200"],
+                                          style=wx.CB_READONLY, size=(200, -1))
+        self.baudrate_combo.SetValue("115200")
+        self.baudrate_combo.Bind(wx.EVT_COMBOBOX, self.on_selection_change)
+        self.manual_baudrate_input = wx.TextCtrl(self, size=(200, -1))
+        self.manual_baudrate_input.SetHint("Введите скорость")
+        self.manual_baudrate_input.Bind(wx.EVT_TEXT, self.on_selection_change)
+        baudrate_sizer.Add(self.baudrate_combo, flag=wx.RIGHT, border=5)
+        baudrate_sizer.Add(self.manual_baudrate_input, flag=wx.LEFT, border=5)
+        main_sizer.Add(baudrate_sizer, flag=wx.LEFT | wx.RIGHT | wx.TOP, border=10)
 
-        # Выбор COM-порта
-        port_layout = QVBoxLayout()
-        port_label = QLabel("Список доступных COM портов:")
-        self.ports_combo = QComboBox()
-        self.populate_combo_box()
+        # Кнопки
+        button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.confirm_button = wx.Button(self, label="Подтвердить")
+        cancel_button = wx.Button(self, label="Отмена")
+        self.confirm_button.Bind(wx.EVT_BUTTON, self.on_confirm)
+        cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel)
+        self.confirm_button.Enable(False)  # Отключена по умолчанию
+        button_sizer.Add(self.confirm_button, flag=wx.RIGHT, border=5)
+        button_sizer.Add(cancel_button, flag=wx.LEFT, border=5)
+        main_sizer.Add(button_sizer, flag=wx.ALIGN_CENTER | wx.TOP | wx.BOTTOM, border=20)
 
-        self.port_input_label = QLabel("Или введите COM порт вручную:")
-        self.port_input = QLineEdit()
-        self.port_input.setPlaceholderText("Введите COM порт")
+        self.SetSizer(main_sizer)
 
-        port_layout.addWidget(port_label)
-        port_layout.addWidget(self.ports_combo)
-        port_layout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-        port_layout.addWidget(self.port_input_label)
-        port_layout.addWidget(self.port_input)
-
-        horizontal_layout.addLayout(port_layout)
-
-        # Выбор Baudrate
-        baudrate_layout = QVBoxLayout()
-        baudrate_label = QLabel("Список доступных Baudrate:")
-        self.baudrate_combo = QComboBox()
-        self.populate_baudrate_combo()
-
-        self.baudrate_input_label = QLabel("Или введите Baudrate вручную:")
-        self.baudrate_input = QLineEdit()
-        self.baudrate_input.setPlaceholderText("Введите Baudrate")
-        self.baudrate_input.setValidator(QIntValidator(1, 1000000, self))
-
-        baudrate_layout.addWidget(baudrate_label)
-        baudrate_layout.addWidget(self.baudrate_combo)
-        baudrate_layout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
-        baudrate_layout.addWidget(self.baudrate_input_label)
-        baudrate_layout.addWidget(self.baudrate_input)
-
-        horizontal_layout.addLayout(baudrate_layout)
-
-        # Добавляем горизонтальный layout в основной
-        main_layout.addLayout(horizontal_layout)
-
-        # Кнопка подтверждения
-        self.confirm_button = QPushButton("&Подтвердить")
-        self.confirm_button.clicked.connect(self.confirm_selection)
-        main_layout.addWidget(self.confirm_button)
-
-        # Таймер для обновления COM портов
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_com_ports)
-        self.timer.start(1000)
-
-    def populate_combo_box(self):
-        ports = list(serial.tools.list_ports.comports())
-        self.ports_combo.clear()
-        if ports:
-            for port in ports:
-                self.ports_combo.addItem(port.device)
-        else:
-            self.ports_combo.addItem("Нет доступных COM портов")
-
-    def update_com_ports(self):
-        """Обновляет список COM портов."""
-        current_ports = [self.ports_combo.itemText(i) for i in range(self.ports_combo.count())]
-        new_ports = [port.device for port in serial.tools.list_ports.comports()]
-        if current_ports != new_ports:
-            self.populate_combo_box()
-
-    def populate_baudrate_combo(self):
-        default_baudrates = [115200, 9600, 19200, 38400, 57600, 250000]
-        self.baudrate_combo.addItems(map(str, default_baudrates))
-        self.baudrate_combo.setCurrentText("115200")
-
-    def confirm_selection(self):
-        selected_port = self.ports_combo.currentText()
-        if self.port_input.text():
-            selected_port = self.port_input.text()
-
-        if not self.is_valid_port(selected_port):
-            self.port_input_label.setText("Ошибка: Неверный формат COM порта")
-            return
-
-        selected_baudrate = self.baudrate_combo.currentText()
-        if self.baudrate_input.text():
-            selected_baudrate = self.baudrate_input.text()
-
-        if not selected_baudrate.isdigit() or int(selected_baudrate) <= 0:
-            self.baudrate_input_label.setText("Ошибка: Baudrate должен быть положительным числом")
-            return
-
-        self.selected_port = selected_port
-        self.selected_baudrate = int(selected_baudrate)
-        self.accept()
+    def get_ports(self):
+        """Получает список доступных COM портов."""
+        ports = [port.device for port in serial.tools.list_ports.comports()]
+        return ports if ports else ["Нет доступных портов"]
 
     def is_valid_port(self, port):
-        pattern = r'^COM\d+$'
+        """Проверяет корректность ввода COM-порта."""
+        pattern = r'^COM\d+$'  # Проверяет, что порт имеет формат COM1, COM2 и т.д.
         return re.match(pattern, port) is not None
 
-    def open_and_get_selection(self):
-        """Открывает окно и возвращает результат."""
-        if self.exec():
-            return self.selected_port, self.selected_baudrate
-        return None, None
+    def is_valid_baudrate(self, baudrate):
+        """Проверяет корректность ввода скорости."""
+        try:
+            baudrate = int(baudrate)
+            return 1 <= baudrate <= 1000000  # Ограничения на скорость
+        except ValueError:
+            return False
+
+    def on_selection_change(self, event):
+        """Активирует кнопку "Подтвердить", если ввод корректен."""
+        manual_port = self.manual_port_input.GetValue().strip()
+        manual_baudrate = self.manual_baudrate_input.GetValue().strip()
+        selected_port = self.port_combo.GetValue()
+        selected_baudrate = self.baudrate_combo.GetValue()
+
+        # Проверяем ручной ввод или выбор из списка
+        port = manual_port if manual_port else selected_port
+        baudrate = manual_baudrate if manual_baudrate else selected_baudrate
+
+        if port and self.is_valid_baudrate(baudrate) and self.is_valid_port(port):
+            self.confirm_button.Enable(True)
+        else:
+            self.confirm_button.Enable(False)
+
+    def on_confirm(self, event):
+        """Обработка нажатия кнопки "Подтвердить"."""
+        manual_port = self.manual_port_input.GetValue().strip()
+        manual_baudrate = self.manual_baudrate_input.GetValue().strip()
+
+        # Приоритет ручного ввода
+        port = manual_port if manual_port else self.port_combo.GetValue()
+        baudrate = manual_baudrate if manual_baudrate else self.baudrate_combo.GetValue()
+
+        if not self.is_valid_port(port):
+            wx.MessageBox("Некорректный COM порт! Используйте формат COM1, COM2 и т.д.", "Ошибка",
+                          wx.OK | wx.ICON_ERROR)
+            return
+
+        if not self.is_valid_baudrate(baudrate):
+            wx.MessageBox("Некорректная скорость! Скорость должна быть от 1 до 1000000.", "Ошибка",
+                          wx.OK | wx.ICON_ERROR)
+            return
+
+        self.selected_port = port
+        self.selected_baudrate = int(baudrate)
+        self.EndModal(wx.ID_OK)
+
+    def on_cancel(self, event):
+        """Обработка нажатия кнопки "Отмена"."""
+        self.EndModal(wx.ID_CANCEL)
+
+    def get_selection(self):
+        """Возвращает выбранные порт и скорость."""
+        return self.selected_port, self.selected_baudrate
+
+
+def select_com_port_and_baudrate():
+    """
+    Открывает окно выбора COM порта и скорости и возвращает результат.
+    :return: Кортеж (port, baudrate) или (None, None), если выбор отменён.
+    """
+    app = wx.App(False)
+    port_window = PortSelectionWindow()
+    if port_window.ShowModal() == wx.ID_OK:
+        result = port_window.get_selection()
+    else:
+        result = (None, None)
+    port_window.Destroy()
+    app.Destroy()
+    return result
 
 
 # Пример использования
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    port_window = PortSelectionWindow()
-    port, baudrate = port_window.open_and_get_selection()
-
+    port, baudrate = select_com_port_and_baudrate()
     if port and baudrate:
         print(f"Выбран порт: {port}, скорость: {baudrate}")
     else:

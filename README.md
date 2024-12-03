@@ -1,177 +1,82 @@
----
+# com-port-selection-tool
 
-```markdown
-# COM Port Selection Tool
+`comsel` — это простая библиотека на Python с использованием `wxPython` для выбора COM порта и скорости (baudrate) в графическом интерфейсе.
 
-This is a PyQt6-based GUI library for selecting COM ports and setting the baud rate. It is designed for ease of use
-in Python projects that require serial communication. The library allows dynamic detection of available COM ports, error
-handling for invalid input, and a clean modern interface.
+## Установка
 
-![Screenshot](./docs/app_screenshot.png)
-
----
-
-## Features
-
-- **Dynamic COM Port Detection:** Automatically updates the list of available COM ports every second.
-- **Custom Input:** Allows manual entry of COM port and baud rate.
-- **Error Handling:** Validates user input for both COM port and baud rate.
-- **Professional Interface:** Includes a white-blue modern design with an application icon.
-
----
-
-## Requirements
-
-- Python 3.9 or higher
-- PyQt6
-- pyserial
-
----
-
-## Installation
-
-Install the library directly from GitHub using `pip`:
+Убедитесь, что у вас установлен Python версии 3.9 или выше. Затем установите библиотеку через `pip`:
 
 ```bash
-pip install git+https://github.com/Molisc/ComSelectApp.git
+pip install comsel
 ```
 
-Alternatively, you can add it to your `requirements.txt`:
+### Установка дополнительных зависимостей
+Если библиотека установлена из исходников, убедитесь, что у вас установлены зависимости:
 
-```text
-git+https://github.com/Molisc/ComSelectApp.git
+```bash
+pip install -r requirements.txt
 ```
 
----
+## Использование
 
-## Usage
-
-After installing, you can use the `PortSelectionWindow` class to integrate the COM Port Selection Tool into your Python application.
-
-### Example 1: Basic Usage
-
-This script demonstrates the simplest way to use the library. It selects a COM port and baud rate and prints the results to the console.
+Библиотека предоставляет удобную функцию для открытия окна выбора COM порта и скорости:
 
 ```python
-from comsel.portSelect import PortSelectionWindow
+from comsel.portSelect import select_com_port_and_baudrate
 
-port, baudrate = PortSelectionWindow.get_port_and_baudrate()
+# Вызов функции выбора порта и скорости
+port, baudrate = select_com_port_and_baudrate()
+
+# Вывод результата
 if port and baudrate:
-    print(f"Selected COM port: {port}, Baud rate: {baudrate}")
+    print(f"Выбран порт: {port}, скорость: {baudrate}")
 else:
-    print("No selection made.")
+    print("Порт или скорость не были выбраны.")
 ```
 
-Run this script:
+### Пример запуска
+1. Импортируйте функцию `select_com_port_and_baudrate` из модуля `comsel.portSelect`.
+2. Вызовите функцию и обработайте результат.
 
-```bash
-python basic_usage.py
-```
+## Особенности
 
----
+- Поддержка автоматического обнаружения доступных COM портов.
+- Возможность ручного ввода порта и скорости.
+- Проверка на корректность введённых данных:
+  - Формат порта должен соответствовать `COM1`, `COM2` и т.д.
+  - Скорость должна быть в пределах от `1` до `1,000,000`.
 
-### Example 2: GUI Output
+## Требования
 
-This script displays the selected COM port and baud rate in a graphical message box.
+- Python 3.9+
+- `wxPython`
+- `pyserial`
 
-```python
-from PyQt6.QtWidgets import QApplication, QMessageBox
-from comsel.portSelect import PortSelectionWindow
-import sys
+## Скриншот приложения
 
-app = QApplication(sys.argv)
+![Пример работы приложения](docs/screenshot.png)
 
-port, baudrate = PortSelectionWindow.get_port_and_baudrate()
-if port and baudrate:
-    QMessageBox.information(None, "Selection Complete", f"COM Port: {port}\nBaud Rate: {baudrate}")
-else:
-    QMessageBox.warning(None, "No Selection", "No COM port or baud rate was selected.")
-```
+## Разработка
 
-Run this script:
+Если вы хотите внести изменения в проект:
 
-```bash
-python gui_output.py
-```
+1. Клонируйте репозиторий:
+   ```bash
+   git clone https://github.com/ваш_проект/comsel.git
+   ```
+2. Установите зависимости:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Внесите изменения и протестируйте их.
 
----
+## Лицензия
 
-### Example 3: Read Data from COM Port
+Этот проект распространяется под лицензией [MIT](LICENSE). Вы можете свободно использовать, изменять и распространять код.
 
-This script connects to the selected COM port and continuously reads data, printing it to the console.
+## Контакты
 
-```python
-import serial
-from comsel.portSelect import PortSelectionWindow
+Если у вас возникли вопросы или предложения, свяжитесь с автором:
 
-def connect_and_read(port, baudrate):
-    try:
-        with serial.Serial(port, baudrate, timeout=1) as ser:
-            print(f"Connected to {port} at {baudrate} baud.")
-
-            while True:
-                data = ser.readline().decode('utf-8').strip()
-                if data:
-                    print(f"Received: {data}")
-    except serial.SerialException as e:
-        print(f"Error: {e}")
-    except KeyboardInterrupt:
-        print("\nDisconnected from port.")
-
-if __name__ == "__main__":
-    port, baudrate = PortSelectionWindow.get_port_and_baudrate()
-    if port and baudrate:
-        connect_and_read(port, baudrate)
-    else:
-        print("No COM port or baud rate selected.")
-```
-
-Run this script:
-
-```bash
-python read_from_port.py
-```
-
----
-
-## File Structure
-
-```
-com-port-selection-tool/
-├── comsel/
-│   ├── __init__.py
-│   ├── portSelect.py           # Main library file
-│   └── icons/
-│       └── icon.ico            # Application icon
-├── docs/
-│   └── app_screenshot.png      # Screenshot of the application
-├── examples/
-│   ├── basic_usage.py          # Example 1: Basic usage
-│   ├── gui_output.py           # Example 2: GUI output
-│   └── read_from_port.py       # Example 3: Reading data from COM port
-├── README.md                   # Project documentation
-├── requirements.txt            # Python dependencies
-├── setup.py                    # Installation script
-```
-
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Contributing
-
-Feel free to submit issues or pull requests if you find any bugs or want to add features.
-```
-
----
-
-### Основные изменения:
-1. **Упрощена установка**: Описана установка через `pip` и GitHub.
-2. **Актуализированы пути импортов**: Используется `comsel.portSelect` для импорта.
-3. **Примеры адаптированы**: Подчёркнута возможность интеграции библиотеки в Python-проекты.
-
-Этот `README.md` подходит для использования вашей библиотеки через `pip install` из GitHub.
+- **Автор**: Molisc
+- **Email**: ivanrudko445@gmail.com

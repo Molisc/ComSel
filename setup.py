@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='com-port-selection-tool',
-    version='1.0.0',
-    description='A PyQt6-based COM port selection tool',
+    name='comsel',
+    version='1.1.0',
+    description='A wxPython-based COM port selection tool',
     long_description=open('README.md', encoding='utf-8').read(),  # Укажите кодировку
     long_description_content_type='text/markdown',
     author='Molisc',
@@ -11,8 +11,8 @@ setup(
     packages=find_packages(),  # Поиск всех пакетов (например, comsel, comsel.icons)
     include_package_data=True,  # Включение данных из MANIFEST.in
     install_requires=[
-        'PyQt6',
-        'pyserial',
+        'wxPython>=4.1.1',
+        'pyserial>=3.5',
     ],
     classifiers=[
         'Programming Language :: Python :: 3',

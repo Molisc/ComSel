@@ -1,1 +1,3 @@
-include comsel/icons/*.ico
+include README.md
+include LICENSE
+recursive-include comsel *.py

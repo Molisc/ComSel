@@ -1,4 +1,10 @@
-from comsel.portSelect import PortSelectionWindow  # Импортируем из пакета comsel
+from comsel.portSelect import select_com_port_and_baudrate
 
-port, baudrate = PortSelectionWindow.get_port_and_baudrate()
-print(f"Selected COM port: {port}, Baud rate: {baudrate}")
+# Вызов функции выбора порта и скорости
+port, baudrate = select_com_port_and_baudrate()
+
+# Вывод результата
+if port and baudrate:
+    print(f"Выбран порт: {port}, скорость: {baudrate}")
+else:
+    print("Порт или скорость не были выбраны.")
